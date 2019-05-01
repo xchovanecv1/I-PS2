@@ -34,6 +34,7 @@ NS_LOG_COMPONENT_DEFINE ("WifiSimpleAdhocGrid");
 void ReceivePacket (Ptr<Socket> socket)
 {
     Ptr<Packet> rcv;
+    
   while (( rcv = socket->Recv ()))
     {
       uint32_t size = rcv->GetSize();
@@ -46,33 +47,6 @@ void ReceivePacket (Ptr<Socket> socket)
              
       free(data);
     }
-}
-
-static void SendDataToNeighbours(Ptr< Node > sNode) {
-  
-    Ptr<Ipv4> stack = sNode->GetObject<Ipv4> ();
-  Ptr<Ipv4RoutingProtocol> rp_Gw = (stack->GetRoutingProtocol ());
-  Ptr<Ipv4ListRouting> lrp_Gw = DynamicCast<Ipv4ListRouting> (rp_Gw);
-
-  Ptr<olsr::RoutingProtocol> olsrrp_Gw;
-
-  for (uint32_t i = 0; i < lrp_Gw->GetNRoutingProtocols ();  i++)
-    {
-      int16_t priority;
-      Ptr<Ipv4RoutingProtocol> temp = lrp_Gw->GetRoutingProtocol (i, priority);
-      if (DynamicCast<olsr::RoutingProtocol> (temp))
-        {
-          olsrrp_Gw = DynamicCast<olsr::RoutingProtocol> (temp);
-        }
-    }
-  
-  olsrrp_Gw->Dump();
-  std::vector< olsr::RoutingTableEntry > susedi = olsrrp_Gw-> GetRoutingTableEntries();
-  for(int d = 0; d < susedi.size(); d++) {
-      cout << susedi.at(d).destAddr << ": " << susedi.at(d).distance << endl;
-  }
-  cout << susedi.size() << " pic" << endl;
-  cout << "ends" << endl;
 }
 
 static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize, 
@@ -105,6 +79,52 @@ static void GenerateTraffic (Ptr<Socket> socket)
       socket->Close ();
     }*/
 }
+
+static void SendDataToNeighbours(Ptr< Node > sNode) {
+  
+    Ptr<Ipv4> stack = sNode->GetObject<Ipv4> ();
+  Ptr<Ipv4RoutingProtocol> rp_Gw = (stack->GetRoutingProtocol ());
+  Ptr<Ipv4ListRouting> lrp_Gw = DynamicCast<Ipv4ListRouting> (rp_Gw);
+
+  Ptr<olsr::RoutingProtocol> olsrrp_Gw;
+
+  for (uint32_t i = 0; i < lrp_Gw->GetNRoutingProtocols ();  i++)
+    {
+      int16_t priority;
+      Ptr<Ipv4RoutingProtocol> temp = lrp_Gw->GetRoutingProtocol (i, priority);
+      if (DynamicCast<olsr::RoutingProtocol> (temp))
+        {
+          olsrrp_Gw = DynamicCast<olsr::RoutingProtocol> (temp);
+        }
+    }
+  
+  olsrrp_Gw->Dump();
+  
+  TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
+
+  
+  std::vector< olsr::RoutingTableEntry > susedi = olsrrp_Gw-> GetRoutingTableEntries();
+  for(int d = 0; d < susedi.size(); d++) {
+      olsr::RoutingTableEntry bf = susedi.at(d);
+      
+      if(bf.distance == 1) {
+
+        Ptr<Socket> source = Socket::CreateSocket (sNode, tid);
+        // 
+        InetSocketAddress remote = InetSocketAddress (bf.destAddr, 80);
+        source->Connect (remote);
+
+        GenerateTraffic(source);
+        
+        source->Close();
+      }
+      
+      //cout << bf.destAddr << ": " << bf.distance << endl;
+  }
+  cout << susedi.size() << " pic" << endl;
+  cout << "ends" << endl;
+}
+
 
 
 string WalkBounds (uint32_t minX, uint32_t maxX, uint32_t minY, uint32_t maxY)
@@ -234,19 +254,26 @@ int main (int argc, char *argv[])
   TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
 
   cout << "Jebko " <<Ipv4Address::GetAny () << endl;
-  Ptr<Socket> recvSink = Socket::CreateSocket (c.Get (sinkNode), tid);
-  InetSocketAddress local = InetSocketAddress (Ipv4Address::GetAny (), 80);
-  recvSink->Bind (local);
-  recvSink->SetAllowBroadcast(true);
-  recvSink->SetRecvCallback (MakeCallback (&ReceivePacket));
+  
+  for(int n = 0; n < numNodes; n++) {
+    Ptr<Socket> recvSink = Socket::CreateSocket (c.Get (n), tid);
+    InetSocketAddress local = InetSocketAddress (Ipv4Address::GetAny (), 80);
+    recvSink->Bind (local);
+    recvSink->SetAllowBroadcast(true);
+    recvSink->SetRecvCallback (MakeCallback (&ReceivePacket));
 
+  }
+  
+  
+  /*
   Ptr<Socket> source = Socket::CreateSocket (c.Get (sourceNode), tid);
-  // i.GetAddress (sinkNode, 0)
-  InetSocketAddress remote = InetSocketAddress (Ipv4Address("255.255.255.255"), 80);
+  // 
+  InetSocketAddress remote = InetSocketAddress (i.GetAddress (14, 0), 80);
   source->Connect (remote);
   
   Simulator::Schedule(Seconds (30.0), &GenerateTraffic, source, packetSize, numPackets, interPacketInterval);
 
+  */
   Simulator::Schedule(Seconds (30.0), &SendDataToNeighbours, c.Get(6));
 
   if (tracing == true)
@@ -278,3 +305,4 @@ int main (int argc, char *argv[])
 
   return 0;
 }
+
