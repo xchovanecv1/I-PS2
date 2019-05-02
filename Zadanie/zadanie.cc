@@ -38,6 +38,9 @@ Ipv4InterfaceContainer ip_container;
 unsigned int *node_message_count;
 int **node_last_message;
 
+void DataCallback(Ptr<Node> node, int sender_id, string data) {
+    cout << data << " from " << sender_id << endl;
+}
 
 static void SendDataToNeighbours(Ptr< Node > sNode, uint8_t * data, int msg_id, int sndr_id);
 static void SendDataToNeighbours(Ptr< Node > sNode, string data);
@@ -97,6 +100,7 @@ void ReceivePacket (Ptr<Socket> socket)
       //cout  << message_id << " a " << node_last_message[node_id][sender] << endl;
       if(message_id > node_last_message[node_id][sender]) { // resending to nbrs
           node_last_message[node_id][sender] = message_id;
+          DataCallback(trt, sender, pckt_data);
           SendDataToNeighbours(trt, (uint8_t*) snd_data, message_id, sender);
           cout << "Nova sprava od: " << sender<< " Ja: " << node_id << " Spravaid:" << message_id << " SPrava: " << pckt_data << endl;
       }
