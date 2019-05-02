@@ -31,10 +31,34 @@ using namespace std;
 
 NS_LOG_COMPONENT_DEFINE ("WifiSimpleAdhocGrid");
 
+
+NodeContainer node_cont;
+
+static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize, 
+                             uint32_t pktCount, Time pktInterval )
+{
+
+  if (pktCount > 0)
+    {
+      uint8_t pici[] = "chlpatvy";
+      socket->Send (Create<Packet> (pici, 8));
+      Simulator::Schedule (pktInterval, &GenerateTraffic, 
+                           socket, pktSize,pktCount-1, pktInterval);
+    }
+  else
+    {
+      socket->Close ();
+    }
+}
+
+
 void ReceivePacket (Ptr<Socket> socket)
 {
     Ptr<Packet> rcv;
-    
+ 
+    Ptr<Node> trt = socket->GetNode();
+    cout << trt->GetId() << endl;
+  TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
   while (( rcv = socket->Recv ()))
     {
       
@@ -45,27 +69,17 @@ void ReceivePacket (Ptr<Socket> socket)
       cout << "Bravcova pata" << endl;*/
       rcv->CopyData (data, size);
       cout << "Magian: " << data << endl;
-             
+             /*
+      Ptr<Socket> source = Socket::CreateSocket (trt, tid);
+	  InetSocketAddress remote = InetSocketAddress (Ipv4Address ("255.255.255.255"), 80);
+	  source->SetAllowBroadcast (true);
+	  source->Connect (remote);
+          GenerateTraffic (source, 20,1, Seconds(1));
+          source->Close();*/
       free(data);
     }
 }
 
-static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize, 
-                             uint32_t pktCount, Time pktInterval )
-{
-
-  if (pktCount > 0)
-    {
-      uint8_t pici[] = "Do pici";
-      socket->Send (Create<Packet> (pici, 8));
-      Simulator::Schedule (pktInterval, &GenerateTraffic, 
-                           socket, pktSize,pktCount-1, pktInterval);
-    }
-  else
-    {
-      socket->Close ();
-    }
-}
 
 static void GenerateTraffic (Ptr<Socket> socket)
 {/*
@@ -83,14 +97,14 @@ static void GenerateTraffic (Ptr<Socket> socket)
 }
 
 
-static void GenerateData (Ptr<Socket> socket, int hop_c, uint8_t* data, uint8_t len)
+static void GenerateDataN (Ptr<Socket> socket, int hop_c, uint8_t* data, uint8_t len)
 {/*
   if (pktCount > 0)
     {*/
       uint8_t dta[] = "Za boha, za narod";
       uint8_t* packet = (uint8_t*)malloc(600);
       
-      //snprintf(packet,sizeof(packet), "%04d%04d:%s",1,hop_c,data);
+      sprintf((char*)packet, "%04d%04d:%s",1,hop_c,data);
       socket->Send (Create<Packet> (packet, 600));
       //Simulator::Schedule (pktInterval, &GenerateTraffic, socket, pktSize,pktCount - 1, pktInterval);
  /*   }
@@ -134,8 +148,9 @@ static void SendDataToNeighbours(Ptr< Node > sNode) {
         InetSocketAddress remote = InetSocketAddress (bf.destAddr, 80);
         source->Connect (remote);
 
-        GenerateTraffic(source);
-        
+        //GenerateTraffic(source);
+        uint8_t data[] = "koni trt";
+        GenerateDataN(source, 1, data, 9);
         source->Close();
       }
       
@@ -213,8 +228,7 @@ int main (int argc, char *argv[])
   Config::SetDefault ("ns3::WifiRemoteStationManager::NonUnicastMode",
                       StringValue (phyMode));
 
-  NodeContainer c;
-  c.Create (numNodes);
+  node_cont.Create (numNodes);
 
   // The below set of helpers will help us to put together the wifi NICs we want
   
@@ -242,7 +256,7 @@ int main (int argc, char *argv[])
                                 "ControlMode",StringValue (phyMode));
   // Set it to adhoc mode
   wifiMac.SetType ("ns3::AdhocWifiMac");
-  NetDeviceContainer devices = wifi.Install (wifiPhy, wifiMac, c);
+  NetDeviceContainer devices = wifi.Install (wifiPhy, wifiMac, node_cont);
 /*
   GridPositionAllocator posAllocator;
   posAllocator.SetMinX(0.0);
@@ -266,9 +280,9 @@ int main (int argc, char *argv[])
                             "Mode", StringValue ("Time"),
                             "Time", StringValue ("2s"),
                             "Direction", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=6.283184]"),
-                            "Speed", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=50]"),
+                            "Speed", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=0]"),
                             "Bounds", StringValue (WalkBounds(m_minX,m_maxX,m_minY,m_maxY)));
-  mobility.Install (c);
+  mobility.Install (node_cont);
 
   // Enable OLSR
   OlsrHelper olsr;
@@ -280,7 +294,7 @@ int main (int argc, char *argv[])
 
   InternetStackHelper internet;
   internet.SetRoutingHelper (list); // has effect on the next Install ()
-  internet.Install (c);
+  internet.Install (node_cont);
 
   Ipv4AddressHelper ipv4;
   NS_LOG_INFO ("Assign IP Addresses.");
@@ -293,25 +307,34 @@ int main (int argc, char *argv[])
   cout << "Jebko " <<Ipv4Address::GetAny () << endl;
   
   for(int n = 0; n < numNodes; n++) {
-    Ptr<Socket> recvSink = Socket::CreateSocket (c.Get (n), tid);
+    Ptr<Socket> recvSink = Socket::CreateSocket (node_cont.Get (n), tid);
     InetSocketAddress local = InetSocketAddress (Ipv4Address::GetAny (), 80);
     recvSink->Bind (local);
     recvSink->SetAllowBroadcast(true);
     recvSink->SetRecvCallback (MakeCallback (&ReceivePacket));
 
   }
-  
+  /*
   for(uint32_t st = send_time; st < (sym_time-1); st+=send_time_i) {
       for(uint32_t ns = 0; ns < numNodes; ns++) {
           for(uint32_t nr = 0; nr < numNodes; nr++) {
               if(ns != nr) {
-                Simulator::Schedule(Seconds (st+((nr+ns)*0.1)), &SendSeckym, c.Get(ns), c.Get(nr),/*Ipv4Address*/i.GetAddress(nr,0));
+                Simulator::Schedule(Seconds (st+((nr+ns)*0.1)), &SendSeckym, c.Get(ns), c.Get(nr),i.GetAddress(nr,0));
               }
           }
       }
   }
-  
-  
+  */
+  /*
+  Ptr<Socket> source = Socket::CreateSocket (c.Get (2), tid);
+	  InetSocketAddress remote = InetSocketAddress (Ipv4Address ("255.255.255.255"), 80);
+	  source->SetAllowBroadcast (true);
+	  source->Connect (remote);
+
+	  Simulator::ScheduleWithContext (source->GetNode ()->GetId (),
+                                  Seconds (30.0), &GenerateTraffic,
+                                  source, packetSize, numPackets, interPacketInterval);
+   */
   /*
   Ptr<Socket> source = Socket::CreateSocket (c.Get (sourceNode), tid);
   // 
@@ -321,7 +344,7 @@ int main (int argc, char *argv[])
   Simulator::Schedule(Seconds (30.0), &GenerateTraffic, source, packetSize, numPackets, interPacketInterval);
 
   */
-  //Simulator::Schedule(Seconds (30.0), &SendDataToNeighbours, c.Get(6));
+  Simulator::Schedule(Seconds (30.0), &SendDataToNeighbours, node_cont.Get(6));
 
   if (tracing == true)
     {
@@ -352,3 +375,4 @@ int main (int argc, char *argv[])
 
   return 0;
 }
+
