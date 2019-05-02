@@ -37,11 +37,12 @@ void ReceivePacket (Ptr<Socket> socket)
     
   while (( rcv = socket->Recv ()))
     {
+      
       uint32_t size = rcv->GetSize();
       uint8_t * data = (uint8_t*)malloc(size);
-      cout << rcv->ToString() << " " << rcv->GetSize()  << endl;
+      /*cout << rcv->ToString() << " " << rcv->GetSize()  << endl;
       NS_LOG_UNCOND ("Received one packet!");
-      cout << "Bravcova pata" << endl;
+      cout << "Bravcova pata" << endl;*/
       rcv->CopyData (data, size);
       cout << "Magian: " << data << endl;
              
@@ -55,7 +56,8 @@ static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize,
 
   if (pktCount > 0)
     {
-      socket->Send (Create<Packet> (pktSize));
+      uint8_t pici[] = "Do pici";
+      socket->Send (Create<Packet> (pici, 8));
       Simulator::Schedule (pktInterval, &GenerateTraffic, 
                            socket, pktSize,pktCount-1, pktInterval);
     }
@@ -72,6 +74,24 @@ static void GenerateTraffic (Ptr<Socket> socket)
       uint8_t dta[] = "Za boha, za narod";
       
       socket->Send (Create<Packet> (dta, 18));
+      //Simulator::Schedule (pktInterval, &GenerateTraffic, socket, pktSize,pktCount - 1, pktInterval);
+ /*   }
+  else
+    {
+      socket->Close ();
+    }*/
+}
+
+
+static void GenerateData (Ptr<Socket> socket, int hop_c, uint8_t* data, uint8_t len)
+{/*
+  if (pktCount > 0)
+    {*/
+      uint8_t dta[] = "Za boha, za narod";
+      uint8_t* packet = (uint8_t*)malloc(600);
+      
+      //snprintf(packet,sizeof(packet), "%04d%04d:%s",1,hop_c,data);
+      socket->Send (Create<Packet> (packet, 600));
       //Simulator::Schedule (pktInterval, &GenerateTraffic, socket, pktSize,pktCount - 1, pktInterval);
  /*   }
   else
@@ -132,6 +152,19 @@ string WalkBounds (uint32_t minX, uint32_t maxX, uint32_t minY, uint32_t maxY)
   return std::to_string(minX) + "|" + std::to_string(maxX) + "|" + std::to_string(minY) + "|" + std::to_string(maxY);
 }
 
+void SendSeckym(Ptr<Node> sender, Ptr<Node> reciever, Ipv4Address rcvAddr) {
+  
+     Time interPacketInterval = Seconds (1.0);
+  TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
+  Ptr<Socket> source = Socket::CreateSocket (sender, tid);
+  // 
+  InetSocketAddress remote = InetSocketAddress (rcvAddr, 80);
+  source->Connect (remote);
+  GenerateTraffic(source, 50, 1, interPacketInterval);
+  
+}
+  
+
 
 int main (int argc, char *argv[])
 {
@@ -146,6 +179,10 @@ int main (int argc, char *argv[])
   double interval = 1.0; // seconds
   bool verbose = false;
   bool tracing = false;
+  
+  uint32_t sym_time = 43;
+  uint32_t send_time = 30;
+  uint32_t send_time_i = 5;
 
   uint32_t m_maxX = (distance) * numNodesInRow;
   uint32_t m_minX = 0;
@@ -229,7 +266,7 @@ int main (int argc, char *argv[])
                             "Mode", StringValue ("Time"),
                             "Time", StringValue ("2s"),
                             "Direction", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=6.283184]"),
-                            "Speed", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=0]"),
+                            "Speed", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=50]"),
                             "Bounds", StringValue (WalkBounds(m_minX,m_maxX,m_minY,m_maxY)));
   mobility.Install (c);
 
@@ -264,6 +301,16 @@ int main (int argc, char *argv[])
 
   }
   
+  for(uint32_t st = send_time; st < (sym_time-1); st+=send_time_i) {
+      for(uint32_t ns = 0; ns < numNodes; ns++) {
+          for(uint32_t nr = 0; nr < numNodes; nr++) {
+              if(ns != nr) {
+                Simulator::Schedule(Seconds (st+((nr+ns)*0.1)), &SendSeckym, c.Get(ns), c.Get(nr),/*Ipv4Address*/i.GetAddress(nr,0));
+              }
+          }
+      }
+  }
+  
   
   /*
   Ptr<Socket> source = Socket::CreateSocket (c.Get (sourceNode), tid);
@@ -274,7 +321,7 @@ int main (int argc, char *argv[])
   Simulator::Schedule(Seconds (30.0), &GenerateTraffic, source, packetSize, numPackets, interPacketInterval);
 
   */
-  Simulator::Schedule(Seconds (30.0), &SendDataToNeighbours, c.Get(6));
+  //Simulator::Schedule(Seconds (30.0), &SendDataToNeighbours, c.Get(6));
 
   if (tracing == true)
     {
@@ -295,7 +342,7 @@ int main (int argc, char *argv[])
   // Output what we are doing
   NS_LOG_UNCOND ("Testing from node " << sourceNode << " to " << sinkNode << " with grid distance " << distance);
 
-  Simulator::Stop (Seconds (100.0));
+  Simulator::Stop (Seconds (sym_time));
   AnimationInterface anim ("risenie.xml");
   anim.EnablePacketMetadata ();
   anim.EnableIpv4RouteTracking ("routingtable-wireless.xml", Seconds (0), Seconds (5), Seconds (0.25));
@@ -305,4 +352,3 @@ int main (int argc, char *argv[])
 
   return 0;
 }
-
