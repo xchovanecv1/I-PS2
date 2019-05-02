@@ -25,6 +25,7 @@ Príklad QoS (pomer priemerneho poctu poslaných uzitocných údajov k celkovém
 #include "ns3/network-module.h"
 #include "ns3/applications-module.h"
 #include <string>
+#include <algorithm>
 
 using namespace ns3;
 using namespace std;
@@ -33,7 +34,13 @@ NS_LOG_COMPONENT_DEFINE ("WifiSimpleAdhocGrid");
 
 
 NodeContainer node_cont;
-Ipv4InterfaceContainer ip_container
+Ipv4InterfaceContainer ip_container;
+unsigned int *node_message_count;
+int **node_last_message;
+
+
+static void SendDataToNeighbours(Ptr< Node > sNode, uint8_t * data, int msg_id, int sndr_id);
+static void SendDataToNeighbours(Ptr< Node > sNode, string data);
 
 static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize, 
                              uint32_t pktCount, Time pktInterval )
@@ -58,18 +65,42 @@ void ReceivePacket (Ptr<Socket> socket)
     Ptr<Packet> rcv;
  
     Ptr<Node> trt = socket->GetNode();
-    cout << trt->GetId() << endl;
+    int node_id = trt->GetId();
+    //cout << trt->GetId() << endl;
   TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
   while (( rcv = socket->Recv ()))
     {
       
       uint32_t size = rcv->GetSize();
-      uint8_t * data = (uint8_t*)malloc(size);
+      char * data = (char*)malloc(size);
       /*cout << rcv->ToString() << " " << rcv->GetSize()  << endl;
       NS_LOG_UNCOND ("Received one packet!");
       cout << "Bravcova pata" << endl;*/
-      rcv->CopyData (data, size);
-      cout << "Magian: " << data << endl;
+      rcv->CopyData ((uint8_t*)data, size);
+      //cout << "Magian: " << data << endl;
+      
+      string datas(data);
+      int frst = datas.find(':');
+      int scnd = datas.find(':',frst+1);
+      
+      string sender_id = datas.substr(0, frst);
+      string msg_id = datas.substr(frst+1, scnd-frst-1);
+      string pckt_data = datas.substr(scnd+1);
+      
+      int sender = stoi(sender_id);
+      int message_id = stoi(msg_id);
+      
+      char* snd_data = (char*)malloc(pckt_data.length()+1);
+      strcpy(snd_data, &(datas[scnd+1]));
+      
+      //cout << sender <<" " <<  message_id << " " << pckt_data << endl;
+      //cout  << message_id << " a " << node_last_message[node_id][sender] << endl;
+      if(message_id > node_last_message[node_id][sender]) { // resending to nbrs
+          node_last_message[node_id][sender] = message_id;
+          SendDataToNeighbours(trt, (uint8_t*) snd_data, message_id, sender);
+          cout << "Nova sprava od: " << sender<< " Ja: " << node_id << " Spravaid:" << message_id << " SPrava: " << pckt_data << endl;
+      }
+      free(snd_data);
              /*
       Ptr<Socket> source = Socket::CreateSocket (trt, tid);
 	  InetSocketAddress remote = InetSocketAddress (Ipv4Address ("255.255.255.255"), 80);
@@ -102,11 +133,6 @@ static void GenerateDataN (Ptr<Socket> socket, int hop_c, uint8_t* data, uint8_t
 {/*
   if (pktCount > 0)
     {*/
-      uint8_t dta[] = "Za boha, za narod";
-      uint8_t* packet = (uint8_t*)malloc(600);
-      
-      sprintf((char*)packet, "%04d%04d:%s",1,hop_c,data);
-      socket->Send (Create<Packet> (packet, 600));
       //Simulator::Schedule (pktInterval, &GenerateTraffic, socket, pktSize,pktCount - 1, pktInterval);
  /*   }
   else
@@ -114,8 +140,15 @@ static void GenerateDataN (Ptr<Socket> socket, int hop_c, uint8_t* data, uint8_t
       socket->Close ();
     }*/
 }
+static void SendDataToNeighbours(Ptr< Node > sNode, string data) {
+    uint8_t* dta = (uint8_t*)malloc(data.length()+1);
+    memset(dta, 0, data.length()+1);
+    sprintf((char*)dta, "%s", data.c_str());
+    SendDataToNeighbours(sNode,(uint8_t*)dta,-1,-1);
+    free(dta);
+}
 
-static void SendDataToNeighbours(Ptr< Node > sNode) {
+static void SendDataToNeighbours(Ptr< Node > sNode, uint8_t * data, int msg_id = -1, int sndr_id = -1) {
   
     Ptr<Ipv4> stack = sNode->GetObject<Ipv4> ();
   Ptr<Ipv4RoutingProtocol> rp_Gw = (stack->GetRoutingProtocol ());
@@ -123,6 +156,17 @@ static void SendDataToNeighbours(Ptr< Node > sNode) {
 
   Ptr<olsr::RoutingProtocol> olsrrp_Gw;
 
+  int sender_id = sNode->GetId();
+  
+  if(msg_id < 0) {
+    node_message_count[sender_id]++;  
+    msg_id = node_message_count[sender_id];
+  }
+  
+  if(sndr_id > 0) {
+    sender_id = sndr_id;
+  }
+  
   for (uint32_t i = 0; i < lrp_Gw->GetNRoutingProtocols ();  i++)
     {
       int16_t priority;
@@ -149,16 +193,19 @@ static void SendDataToNeighbours(Ptr< Node > sNode) {
         InetSocketAddress remote = InetSocketAddress (bf.destAddr, 80);
         source->Connect (remote);
 
-        //GenerateTraffic(source);
-        uint8_t data[] = "koni trt";
-        GenerateDataN(source, 1, data, 9);
+
+        uint8_t* packet = (uint8_t*)malloc(600);
+        
+        sprintf((char*)packet, "%d:%d:%s",sender_id,msg_id,data);
+        source->Send (Create<Packet> (packet, 600));
+        
+        //GenerateDataN(source, msg_id, data, strlen(data));
         source->Close();
       }
       
       //cout << bf.destAddr << ": " << bf.distance << endl;
   }
-  cout << susedi.size() << " pic" << endl;
-  cout << "ends" << endl;
+
 }
 
 
@@ -205,6 +252,22 @@ int main (int argc, char *argv[])
   uint32_t m_maxY = (distance) * numNodesInRow;
   uint32_t m_minY = 0;
   
+  node_message_count = (unsigned int *)new int[numNodes];
+  memset(node_message_count, 0, numNodes*(sizeof(unsigned int)));
+  
+  node_last_message = new int*[numNodes];
+    for(int i = 0; i < numNodes; ++i){
+        node_last_message[i] = new int[numNodes];
+        for(int d = 0; d < numNodes; ++d){
+            node_last_message[i][d] = 0;
+        }
+    }
+    /*
+  for(int i = 0; i < numNodes; i++) {
+      node_last_message[i] = (unsigned int *)malloc(numNodes);
+      memset(node_last_message[i], 0, numNodes*(sizeof(unsigned int)));
+  }
+  */
   //define vars for ap points
   MobilityHelper mobility;
   WifiHelper wifi;
@@ -281,7 +344,7 @@ int main (int argc, char *argv[])
                             "Mode", StringValue ("Time"),
                             "Time", StringValue ("2s"),
                             "Direction", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=6.283184]"),
-                            "Speed", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=0]"),
+                            "Speed", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=50]"),
                             "Bounds", StringValue (WalkBounds(m_minX,m_maxX,m_minY,m_maxY)));
   mobility.Install (node_cont);
 
@@ -346,8 +409,9 @@ int main (int argc, char *argv[])
   Simulator::Schedule(Seconds (30.0), &GenerateTraffic, source, packetSize, numPackets, interPacketInterval);
 
   */
-  Simulator::Schedule(Seconds (30.0), &SendDataToNeighbours, node_cont.Get(6));
-
+  uint8_t msg[] = "Testovacka";
+  Simulator::Schedule(Seconds (30.0), &SendDataToNeighbours, node_cont.Get(6), "testovacia sprava");
+  
   if (tracing == true)
     {
       AsciiTraceHelper ascii;
