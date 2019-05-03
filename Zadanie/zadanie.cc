@@ -25,7 +25,9 @@ Príklad QoS (pomer priemerneho poctu poslaných uzitocných údajov k celkovém
 #include "ns3/network-module.h"
 #include "ns3/applications-module.h"
 #include <string>
+#include <sstream>      // std::stringstream
 #include <algorithm>
+#include <math.h> 
 
 using namespace ns3;
 using namespace std;
@@ -38,8 +40,111 @@ Ipv4InterfaceContainer ip_container;
 unsigned int *node_message_count;
 int **node_last_message;
 
-void DataCallback(Ptr<Node> node, int sender_id, string data) {
-    cout << data << " from " << sender_id << endl;
+void StopNode(Ptr<Node> node) {
+    
+                
+                std::stringstream pathdir;
+                
+                pathdir << "/NodeList/"<< node->GetId() << "/$ns3::MobilityModel/$ns3::RandomWalk2dMobilityModel/Direction";
+                
+                std::stringstream pathspeed;
+                
+                pathspeed << "/NodeList/"<< node->GetId() << "/$ns3::MobilityModel/$ns3::RandomWalk2dMobilityModel/Speed";
+                
+                cout << pathspeed.str() << endl;
+                stringstream setval;
+                
+                setval << "ns3::UniformRandomVariable[Min=0.0|Max=6.283184]";
+                
+                stringstream setspeed;
+                
+                setspeed << "ns3::UniformRandomVariable[Min=0.0|Max=5]";
+                        
+                cout << setval.str() << endl;
+                Config::Set(pathdir.str(),StringValue (setval.str()));
+                Config::Set(pathspeed.str(),StringValue (setspeed.str()));
+                
+
+                Config::Set(pathspeed.str(),StringValue (setspeed.str()));
+}
+
+void DataCallback(Ptr<Node> node, int sender_id, string datas) {
+    
+      size_t frst = datas.find('|');
+      Ptr<MobilityModel> sender_model = node->GetObject<MobilityModel>();
+      
+      if(frst !=  string::npos) {
+          string command = datas.substr(0, frst);
+          cout << "Command " << command << endl;
+          if(command.compare("SetPos") == 0) {
+              
+            size_t scnd = datas.find('|',frst+1);
+              string x = datas.substr(frst+1, scnd-frst-1);
+                string y = datas.substr(scnd+1);
+                double pos_x = stod(x);
+                double pos_y = stod(y);
+            //int sender = stoi(sender_id);
+              
+                Vector sender_pos = sender_model->GetPosition();
+                Ptr<MobilityModel> mdl = node_cont.Get(sender_id)->GetObject<MobilityModel>();
+                Vector reciever_pos = mdl->GetPosition();
+                
+                cout << "Sender " << sender_pos.x << " " << sender_pos.y << endl;
+                cout << "Recv " << reciever_pos.x << " " << reciever_pos.y << endl;
+                
+                double dy = sender_pos.y - reciever_pos.y;
+                double dx = sender_pos.x - reciever_pos.x;
+                double e = sqrt((dx*dx) + (dy*dy));
+                
+                double speed = 50.0;
+                
+                double alp = atan2((dy), dx) + 3.14 ;//6.28; //asin (dy/e);
+                
+                double stop_time = (e/speed) * 0.8;
+                
+                std::stringstream pathdir;
+                
+                pathdir << "/NodeList/"<< node->GetId() << "/$ns3::MobilityModel/$ns3::RandomWalk2dMobilityModel/Direction";
+                
+                std::stringstream pathspeed;
+                
+                pathspeed << "/NodeList/"<< node->GetId() << "/$ns3::MobilityModel/$ns3::RandomWalk2dMobilityModel/Speed";
+                
+                cout << pathspeed.str() << endl;
+                stringstream setval;
+                
+                setval << "ns3::UniformRandomVariable[Min="<< alp<< "|Max="<< alp<< "]";
+                
+                stringstream setspeed;
+                
+                setspeed << "ns3::UniformRandomVariable[Min=" << speed << "|Max="<< speed <<"]";
+                        
+                cout << setval.str() << endl;
+                Config::Set(pathdir.str(),StringValue (setval.str()));
+                Config::Set(pathspeed.str(),StringValue (setspeed.str()));
+                cout << "Uhel " << alp << endl;
+                
+                cout << " Zastaf " << stop_time << endl;
+                
+                Simulator::Schedule(Seconds (stop_time), &StopNode, node);
+                //mdl->DoSetPosition(Vector (pos_x, pos_y, 0));
+                //mdl->DoWalk(Seconds(2));
+                /*
+                    MobilityHelper mobility_sink;
+                    Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
+                    positionAlloc->Add (Vector (pos_x, pos_y, 0.0));
+                    mobility_sink.SetPositionAllocator (positionAlloc);
+                    mobility_sink.SetMobilityModel ("ns3::ConstantVelocityMobilityModel");
+                    mobility_sink.Install (node);
+                    node -> GetObject<ConstantVelocityMobilityModel>() -> SetVelocity(Vector(20.0, 20.0, 0.0));  
+                */
+              cout << "Setting position for node " << node->GetId() << "["<<x << " " << y << "]" << endl;
+              
+          }
+      }
+      
+    
+    cout << datas << " from " << sender_id << endl;
 }
 
 static void SendDataToNeighbours(Ptr< Node > sNode, uint8_t * data, int msg_id, int sndr_id);
@@ -62,6 +167,34 @@ static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize,
     }
 }
 
+void CallNeighbours(Ptr<Node> node) {
+    
+    Ptr<MobilityModel> mdl = node->GetObject<MobilityModel>();
+    Vector pos = mdl->GetPosition();
+    TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
+    
+    cout << "Som tu: " << pos.x << " " << pos.y << ";" << endl;
+    
+    int node_id = node->GetId();
+    
+    //node_message_count[node_id]++;
+    
+    std::stringstream ss;
+    
+    ss << node->GetId() << ":" << 0 << ":" << "SetPos|" << to_string(pos.x) << "|" << to_string(pos.y);
+    
+    string dta = ss.str();
+    cout << dta << endl;
+    Ptr<Socket> source = Socket::CreateSocket (node, tid);
+    InetSocketAddress remote = InetSocketAddress (Ipv4Address ("255.255.255.255"), 80);
+    source->SetAllowBroadcast (true);
+    source->Connect (remote);
+    source->Send (Create<Packet> ((uint8_t*)dta.c_str(), dta.length()+1));
+    source->Close();
+    
+    
+    //->SetPosition
+}
 
 void ReceivePacket (Ptr<Socket> socket)
 {
@@ -70,7 +203,7 @@ void ReceivePacket (Ptr<Socket> socket)
     Ptr<Node> trt = socket->GetNode();
     int node_id = trt->GetId();
     //cout << trt->GetId() << endl;
-  TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
+    TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
   while (( rcv = socket->Recv ()))
     {
       
@@ -103,6 +236,8 @@ void ReceivePacket (Ptr<Socket> socket)
           DataCallback(trt, sender, pckt_data);
           SendDataToNeighbours(trt, (uint8_t*) snd_data, message_id, sender);
           cout << "Nova sprava od: " << sender<< " Ja: " << node_id << " Spravaid:" << message_id << " SPrava: " << pckt_data << endl;
+      } else if (message_id == 0){
+          DataCallback(trt, sender, pckt_data);
       }
       free(snd_data);
              /*
@@ -247,7 +382,7 @@ int main (int argc, char *argv[])
   bool verbose = false;
   bool tracing = false;
   
-  uint32_t sym_time = 43;
+  uint32_t sym_time = 100;
   uint32_t send_time = 30;
   uint32_t send_time_i = 5;
 
@@ -348,7 +483,7 @@ int main (int argc, char *argv[])
                             "Mode", StringValue ("Time"),
                             "Time", StringValue ("2s"),
                             "Direction", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=6.283184]"),
-                            "Speed", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=50]"),
+                            "Speed", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=5]"),
                             "Bounds", StringValue (WalkBounds(m_minX,m_maxX,m_minY,m_maxY)));
   mobility.Install (node_cont);
 
@@ -415,6 +550,9 @@ int main (int argc, char *argv[])
   */
   uint8_t msg[] = "Testovacka";
   Simulator::Schedule(Seconds (30.0), &SendDataToNeighbours, node_cont.Get(6), "testovacia sprava");
+  
+  Simulator::Schedule(Seconds (40.0), &CallNeighbours, node_cont.Get(6));
+  
   
   if (tracing == true)
     {
