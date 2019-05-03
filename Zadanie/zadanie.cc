@@ -39,6 +39,7 @@ NodeContainer node_cont;
 Ipv4InterfaceContainer ip_container;
 unsigned int *node_message_count;
 int **node_last_message;
+Vector *last_pos;
 
 void StopNode(Ptr<Node> node) {
     
@@ -72,7 +73,8 @@ void DataCallback(Ptr<Node> node, int sender_id, string datas) {
     
       size_t frst = datas.find('|');
       Ptr<MobilityModel> sender_model = node->GetObject<MobilityModel>();
-      
+      Vector sender_pos = sender_model->GetPosition();
+      int my_id = node->GetId();
       if(frst !=  string::npos) {
           string command = datas.substr(0, frst);
           cout << "Command " << command << endl;
@@ -84,8 +86,7 @@ void DataCallback(Ptr<Node> node, int sender_id, string datas) {
                 double pos_x = stod(x);
                 double pos_y = stod(y);
             //int sender = stoi(sender_id);
-              
-                Vector sender_pos = sender_model->GetPosition();
+                
                 Ptr<MobilityModel> mdl = node_cont.Get(sender_id)->GetObject<MobilityModel>();
                 Vector reciever_pos = mdl->GetPosition();
                 
@@ -95,6 +96,10 @@ void DataCallback(Ptr<Node> node, int sender_id, string datas) {
                 double dy = sender_pos.y - reciever_pos.y;
                 double dx = sender_pos.x - reciever_pos.x;
                 double e = sqrt((dx*dx) + (dy*dy));
+                
+                last_pos[my_id].x = reciever_pos.x;
+                last_pos[my_id].y = reciever_pos.y;
+                last_pos[my_id].z = reciever_pos.z;
                 
                 double speed = 50.0;
                 
@@ -140,6 +145,45 @@ void DataCallback(Ptr<Node> node, int sender_id, string datas) {
                 */
               cout << "Setting position for node " << node->GetId() << "["<<x << " " << y << "]" << endl;
               
+          } else if(command.compare("GoLastPos") == 0) {
+              
+              if(last_pos[my_id].x == 0 && last_pos[my_id].y== 0 && last_pos[my_id].z == 0) return;
+              cout << "Idem dom" << endl;
+                double dy = sender_pos.y - last_pos[my_id].y;
+                double dx = sender_pos.x - last_pos[my_id].x;
+                double e = sqrt((dx*dx) + (dy*dy));
+
+                double speed = 50.0;
+                
+                double alp = atan2((dy), dx) + 3.14 ;//6.28; //asin (dy/e);
+                
+                double stop_time = (e/speed) * 0.8;
+                
+                std::stringstream pathdir;
+                
+                pathdir << "/NodeList/"<< node->GetId() << "/$ns3::MobilityModel/$ns3::RandomWalk2dMobilityModel/Direction";
+                
+                std::stringstream pathspeed;
+                
+                pathspeed << "/NodeList/"<< node->GetId() << "/$ns3::MobilityModel/$ns3::RandomWalk2dMobilityModel/Speed";
+                
+                cout << pathspeed.str() << endl;
+                stringstream setval;
+                
+                setval << "ns3::UniformRandomVariable[Min="<< alp<< "|Max="<< alp<< "]";
+                
+                stringstream setspeed;
+                
+                setspeed << "ns3::UniformRandomVariable[Min=" << speed << "|Max="<< speed <<"]";
+                        
+                cout << setval.str() << endl;
+                Config::Set(pathdir.str(),StringValue (setval.str()));
+                Config::Set(pathspeed.str(),StringValue (setspeed.str()));
+                cout << "Uhel " << alp << endl;
+                
+                cout << " Zastaf " << stop_time << endl;
+                
+                Simulator::Schedule(Seconds (stop_time), &StopNode, node);
           }
       }
       
@@ -194,6 +238,13 @@ void CallNeighbours(Ptr<Node> node) {
     
     
     //->SetPosition
+}
+
+
+void GoHome(Ptr<Node> node) {
+    
+    SendDataToNeighbours(node, "GoLastPos");
+    
 }
 
 void ReceivePacket (Ptr<Socket> socket)
@@ -394,6 +445,13 @@ int main (int argc, char *argv[])
   node_message_count = (unsigned int *)new int[numNodes];
   memset(node_message_count, 0, numNodes*(sizeof(unsigned int)));
   
+  last_pos = new Vector[numNodes];
+  for(int i=0; i < numNodes; i++) {
+      last_pos[i].x = 0;
+      last_pos[i].y = 0;
+      last_pos[i].z = 0;
+  }
+  
   node_last_message = new int*[numNodes];
     for(int i = 0; i < numNodes; ++i){
         node_last_message[i] = new int[numNodes];
@@ -548,12 +606,20 @@ int main (int argc, char *argv[])
   Simulator::Schedule(Seconds (30.0), &GenerateTraffic, source, packetSize, numPackets, interPacketInterval);
 
   */
-  uint8_t msg[] = "Testovacka";
   Simulator::Schedule(Seconds (30.0), &SendDataToNeighbours, node_cont.Get(6), "testovacia sprava");
   
   Simulator::Schedule(Seconds (40.0), &CallNeighbours, node_cont.Get(6));
+  Simulator::Schedule(Seconds (41.0), &CallNeighbours, node_cont.Get(12));
   
+  Simulator::Schedule(Seconds (45.0), &CallNeighbours, node_cont.Get(11));
   
+  Simulator::Schedule(Seconds (60.0), &CallNeighbours, node_cont.Get(18));
+   //Simulator::Schedule(Seconds (61.0), &SendDataToNeighbours, node_cont.Get(17), "testovacia sprava2");
+  
+  Simulator::Schedule(Seconds (63.0), &SendDataToNeighbours, node_cont.Get(17), "GoLastPos|");
+  
+  Simulator::Schedule(Seconds (80.0), &CallNeighbours, node_cont.Get(16));
+ 
   if (tracing == true)
     {
       AsciiTraceHelper ascii;
