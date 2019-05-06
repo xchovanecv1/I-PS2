@@ -24,7 +24,17 @@
  *              -"ns3::UniformRandomVariable[Min=---|Max=---]";
  *          "/NodeList/---/$ns3::MobilityModel/$ns3::RandomWalk2dMobilityModel/Speed";
  *              -"ns3::UniformRandomVariable[Min=---|Max=---]";
-                
+        
+ *      Implementacia vlastneho broadcast protokolu
+ *       - Pomocou OLSR routovacej tabulky si vyhladame susedov, ktory su klasifikovany vo vzdalenosti 1 hopu.
+ *       - Kazdy datovy paket obsahuje informacie:
+ *          cislo odosielajuceho nodu:cislo spravy:data
+ *          -> cislo odosielatela: IDcko daneho nodku ktory vyslal danu spravu.
+ *          -> cislo spravy: poradove cislo danej spravy pre dany node
+ *       Protokol:
+ *          -> kazdy node si drzi posledne ID spravy, ktoru prijal od jedntlivych nodov
+ *          -> ak prijmem spravu, ktorej ID je vacsie ako posledne zname ID, spracujem data a preposieam vsetkym mojim susedom
+ *          -> ak je ID danej spravy mensie alebo rovnake ako aktualne, dana sprava je zahodena, pretoze prisla od ineho nodu, ktoremu som danu spravu poslal ja     
         zmena v modelu L2-L5 2b
 3. Simulácia elektronickej hliadky prevencie poziaru.
 Robot (UAV alebo ine) sa pohybuje po sklade a vysiela signál videa (streaming) na server. V sklade sa nachadzajú AP s priamim prístupom na server.
