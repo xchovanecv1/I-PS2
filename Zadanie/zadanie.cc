@@ -1,5 +1,32 @@
 /*
-3. Simulácia elektronickej hliadky.
+    Vizualizácia: NetAnim 2b (pozn. využite cmd-line-arguments)
+ *      --enableNetanim
+ *  Reprezentácia merania: Tri grafy (pozn. minimálne 10 bodov merania s vyhodnotením, t.j. odchýlky merania) 3b + zhodnotenie grafu (prečo je to taká závislosť) 2b
+
+ *  Popis merania:
+        vhodný vyber ISO OSI — v úvodnom komentári popíšte vhodnosť výberu jednotlivých protokolov … 4b
+ *          Vyhody vyuzitia OLSR:
+ * 
+        volanie časových udalostí  2b
+ *          Simulator::Schedule(Seconds (30.0), &SendDataToNeighbours, node_cont.Get(6), "testovacia sprava");
+
+            Simulator::Schedule(Seconds (61.0), &SendDataToNeighbours, node_cont.Get(17), "testovacia sprava2");
+            Simulator::Schedule(Seconds (63.0), &SendDataToNeighbours, node_cont.Get(17), "GoLastPos|");
+            Simulator::Schedule(Seconds (80.0), &CallNeighbours, node_cont.Get(16));
+        volanie udalostí zmenu stavu (atributu modelu) 2b
+ *          Simulator::Schedule(Seconds (40.0), &CallNeighbours, node_cont.Get(6));
+            Simulator::Schedule(Seconds (41.0), &CallNeighbours, node_cont.Get(12));
+            Simulator::Schedule(Seconds (45.0), &CallNeighbours, node_cont.Get(11));
+            Simulator::Schedule(Seconds (60.0), &CallNeighbours, node_cont.Get(18));
+        zmena v modelu L1  fyzické médium, pohyb, útlm … 3b
+ *          - privolanie okolitych dronov do svojho okolia pre dokladnejsi prieskum miesta zaujmu
+ *          "/NodeList/---/$ns3::MobilityModel/$ns3::RandomWalk2dMobilityModel/Direction";
+ *              -"ns3::UniformRandomVariable[Min=---|Max=---]";
+ *          "/NodeList/---/$ns3::MobilityModel/$ns3::RandomWalk2dMobilityModel/Speed";
+ *              -"ns3::UniformRandomVariable[Min=---|Max=---]";
+                
+        zmena v modelu L2-L5 2b
+3. Simulácia elektronickej hliadky prevencie poziaru.
 Robot (UAV alebo ine) sa pohybuje po sklade a vysiela signál videa (streaming) na server. V sklade sa nachadzajú AP s priamim prístupom na server.
 
 Abstrakcia: 
@@ -10,7 +37,10 @@ Abstrakcia:
 -trvanie simulácie, rozsahy parametrov (fyzických, protokolov ...).
 
 Príklad QoS (pomer priemerneho poctu poslaných uzitocných údajov k celkovému poctu poslaných údajov na jednu cestu/balik), priklad parametra pocet vedlajsich komunikacii v sieti.
-*/
+
+ 
+ 
+ */
 
 
 #include "ns3/core-module.h"
@@ -433,6 +463,8 @@ int main (int argc, char *argv[])
   bool verbose = false;
   bool tracing = false;
   
+  bool enableNetanim = true;
+  
   uint32_t sym_time = 100;
   uint32_t send_time = 30;
   uint32_t send_time_i = 5;
@@ -441,6 +473,10 @@ int main (int argc, char *argv[])
   uint32_t m_minX = 0;
   uint32_t m_maxY = (distance) * numNodesInRow;
   uint32_t m_minY = 0;
+  
+  CommandLine cmd;
+ cmd.AddValue ("enableNetanim", "Vystupna animacia pre Netanim", enableNetanim);
+ cmd.Parse (argc, argv);
   
   node_message_count = (unsigned int *)new int[numNodes];
   memset(node_message_count, 0, numNodes*(sizeof(unsigned int)));
@@ -620,6 +656,9 @@ int main (int argc, char *argv[])
   
   Simulator::Schedule(Seconds (80.0), &CallNeighbours, node_cont.Get(16));
  
+  // V pripade ak je cely konstruktor v If, Netanim negeneruje ziadne udaje, preto je defaultne vypnuty a nasledne v pripade pozadovaneho netanimu nastavime koniec sym casu
+  AnimationInterface anim ("zadanie.xml");
+  anim.SetStopTime (Seconds(0));
   if (tracing == true)
     {
       AsciiTraceHelper ascii;
@@ -632,18 +671,19 @@ int main (int argc, char *argv[])
       olsr.PrintNeighborCacheAllEvery (Seconds (2), neighborStream);
 
       // To do-- enable an IP-level trace that shows forwarding events only
-    }
-
+  }
   // Give OLSR time to converge-- 30 seconds perhaps
   
   // Output what we are doing
   NS_LOG_UNCOND ("Testing from node " << sourceNode << " to " << sinkNode << " with grid distance " << distance);
 
   Simulator::Stop (Seconds (sym_time));
-  AnimationInterface anim ("risenie.xml");
-  anim.EnablePacketMetadata ();
-  anim.EnableIpv4RouteTracking ("routingtable-wireless.xml", Seconds (0), Seconds (5), Seconds (0.25));
-
+  if(enableNetanim) {
+    anim.SetStopTime (Seconds(sym_time));
+    anim.EnablePacketMetadata ();
+    anim.EnableIpv4RouteTracking ("routingtable-wireless.xml", Seconds (0), Seconds (5), Seconds (0.25));
+    
+  }
   Simulator::Run ();
   Simulator::Destroy ();
 
