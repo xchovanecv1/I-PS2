@@ -109,6 +109,48 @@ void StopNode(Ptr<Node> node) {
                 Config::Set(pathspeed.str(),StringValue (setspeed.str()));
 }
 
+void MoveUAVPos(Ptr<Node> node, Vector toPos) {
+    
+    Ptr<MobilityModel> sender_model = node->GetObject<MobilityModel>();
+      Vector reciever_pos = sender_model->GetPosition();
+      
+                double dy = toPos.y - reciever_pos.y;
+                double dx = toPos.x - reciever_pos.x;
+                double e = sqrt((dx*dx) + (dy*dy));
+
+                double speed = 50.0;
+                
+                double alp = atan2((dy), dx) + 3.14 ;//6.28; //asin (dy/e);
+                
+                double stop_time = (e/speed) * 0.8;
+                
+                std::stringstream pathdir;
+                
+                pathdir << "/NodeList/"<< node->GetId() << "/$ns3::MobilityModel/$ns3::RandomWalk2dMobilityModel/Direction";
+                
+                std::stringstream pathspeed;
+                
+                pathspeed << "/NodeList/"<< node->GetId() << "/$ns3::MobilityModel/$ns3::RandomWalk2dMobilityModel/Speed";
+                
+                cout << pathspeed.str() << endl;
+                stringstream setval;
+                
+                setval << "ns3::UniformRandomVariable[Min="<< alp<< "|Max="<< alp<< "]";
+                
+                stringstream setspeed;
+                
+                setspeed << "ns3::UniformRandomVariable[Min=" << speed << "|Max="<< speed <<"]";
+                        
+                cout << setval.str() << endl;
+                Config::Set(pathdir.str(),StringValue (setval.str()));
+                Config::Set(pathspeed.str(),StringValue (setspeed.str()));
+                cout << "Uhel " << alp << endl;
+                
+                cout << " Zastaf " << stop_time << endl;
+                
+                Simulator::Schedule(Seconds (stop_time), &StopNode, node);
+}
+
 void DataCallback(Ptr<Node> node, int sender_id, string datas) {
     
       size_t frst = datas.find('|');
@@ -126,7 +168,11 @@ void DataCallback(Ptr<Node> node, int sender_id, string datas) {
                 double pos_x = stod(x);
                 double pos_y = stod(y);
             //int sender = stoi(sender_id);
-                
+                /*
+                Ptr<MobilityModel> mdl = node_cont.Get(sender_id)->GetObject<MobilityModel>();
+                Vector reciever_pos = mdl->GetPosition();
+                MoveUAVPos(node_cont.Get(sender_id), sender_pos);
+*/
                 Ptr<MobilityModel> mdl = node_cont.Get(sender_id)->GetObject<MobilityModel>();
                 Vector reciever_pos = mdl->GetPosition();
                 
@@ -172,6 +218,7 @@ void DataCallback(Ptr<Node> node, int sender_id, string datas) {
                 cout << " Zastaf " << stop_time << endl;
                 
                 Simulator::Schedule(Seconds (stop_time), &StopNode, node);
+                 
                 //mdl->DoSetPosition(Vector (pos_x, pos_y, 0));
                 //mdl->DoWalk(Seconds(2));
                 /*
@@ -456,8 +503,25 @@ void SendSeckym(Ptr<Node> sender, Ptr<Node> reciever, Ipv4Address rcvAddr) {
   GenerateTraffic(source, 50, 1, interPacketInterval);
   
 }
-  
+ 
 
+void TableChanged(string path, uint32_t val) {
+     std::stringstream test(path);
+    std::string segment;
+    std::vector<std::string> seglist;
+
+    while(std::getline(test, segment, '/'))
+    {
+       seglist.push_back(segment);
+    }
+    
+    int nodeID = stoi(seglist[2]);
+    Time now = Simulator::Now();
+    //Avoid initial routing
+    if(val == 0 && (now > Seconds(30.0))) {
+        MoveUAVPos(node_cont.Get(nodeID), Vector(1000.0,1000.0,0));
+    }
+}
 
 int main (int argc, char *argv[])
 {
@@ -474,6 +538,7 @@ int main (int argc, char *argv[])
   bool tracing = false;
   
   bool enableNetanim = true;
+  float helloInterval = 2.0;
   
   uint32_t sym_time = 100;
   uint32_t send_time = 30;
@@ -486,6 +551,7 @@ int main (int argc, char *argv[])
   
   CommandLine cmd;
  cmd.AddValue ("enableNetanim", "Vystupna animacia pre Netanim", enableNetanim);
+ cmd.AddValue ("helloInterval", "Interval hello paketov (OLSR)", helloInterval);
  cmd.Parse (argc, argv);
   
   node_message_count = (unsigned int *)new int[numNodes];
@@ -694,6 +760,11 @@ int main (int argc, char *argv[])
     anim.EnableIpv4RouteTracking ("routingtable-wireless.xml", Seconds (0), Seconds (5), Seconds (0.25));
     
   }
+  
+  Config::Connect("/NodeList/*/$ns3::olsr::RoutingProtocol/RoutingTableChanged", MakeCallback(&TableChanged));
+  
+  Simulator::Schedule (Seconds (sym_time/4), &Config::Set, "/NodeList/*/$ns3::olsr::RoutingProtocol/HelloInterval", TimeValue(Seconds(helloInterval)));
+  
   Simulator::Run ();
   Simulator::Destroy ();
 
