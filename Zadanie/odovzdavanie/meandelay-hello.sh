@@ -3,7 +3,7 @@
 makePlot()
 {
 	gnuplot <<- EOF
-		set xlabel "Speed"
+		set xlabel "Hello interval"
 		set ylabel "$1"
 		set terminal svg
 		set output "$2.svg"
@@ -68,19 +68,20 @@ echo "$odchylka"
 }
 
 
-THROUGHPUT_FILE=lostnodes_speed
+THROUGHPUT_FILE=meandelay_hello
 
 echo Start
-vals=(1 2 5 10 20 40 60 80 100)
+vals=(1 2 10 20 40 60 80 100)
+
 for i in "${vals[@]}" #55 
 do
 	echo $i
 	for j in $(seq 1 3) #5
 	do
-		OUTPUT=$(./waf --run "scratch/zadanie --uavSpeed=$i --lostNodes")
+		OUTPUT=$(./waf --run "scratch/zadanie --helloInterval=$i --lostNodes")
 		NODES=$i 
 		#$(echo $OUTPUT | grep -o "Nodes: [0-9]\+" | grep -o "[0-9]\+")
-		THROUGHPUT=$(echo $OUTPUT | grep -o "Lost-nodes: [0-9]\+[.]\?[0-9]*" | grep -o "[0-9]\+[.]\?[0-9]*")
+		THROUGHPUT=$(echo $OUTPUT | grep -o "Mean-delay: [0-9]\+[.]\?[0-9]*" | grep -o "[0-9]\+[.]\?[0-9]*")
 		echo "$i $THROUGHPUT" >> "$THROUGHPUT_FILE$j.dat"
 		THROUGHPUT_ARRAY[$j]=$THROUGHPUT
 		#UZITOCNE=$(echo $OUTPUT | grep -o "UzitocneData: [0-9]\+[.]\?[0-9]*" | grep -o "[0-9]\+[.]\?[0-9]*")
@@ -94,7 +95,7 @@ done
 
 
 
-makePlot "Lost-nodes" "LostNodesSpeed" $THROUGHPUT_FILE"_avg" 
+makePlot "Mean-delay" "MeanDelayHelloInterval" $THROUGHPUT_FILE"_avg" 
 
 echo Stop
 
