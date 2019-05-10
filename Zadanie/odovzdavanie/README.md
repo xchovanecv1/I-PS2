@@ -7,16 +7,42 @@ Odovzdajte projekt t.j. c++ kod so vsetkymi kniznicami ak boli navyse (napr. *.h
 nutne parametre prikazovom riadku s jednotnymi nazvami: 
 - --simulTime cas trvania simulacie (double)
 - --anim vytvorenie animacie (boolean)
-- a dalsie vhodne podla projektu
+- --helloInterval Interval hello paketov (OLSR)
+- --uavSpeed Base speed of node movement
+- --distance Distance between nodes
+- --pktSize Size of telemetry packet
+ 
 
 ak sa zmestia obrazky a animacia vlozte aj tu
 
 
-## Dokumentacia zadania
+## Dokumentacia zadania c. 3.
+Zadanie simuluje drony hliadkujuce loziska poziaru v Australskych lesoch. Jednotlive drony su rozmiestene do grid usporiadania. Vsetky drony maju spociatku nastaveny nahodny pohyb v okoli ich pociatku. V pripade, ako dron najde podozrivu oblast, privolava svojich najblizsich susedov z okolia k sebe. Taktiez si vymienaju telemetricke udaje vo forme zostavajucej baterie, ktorej hodnotu posielaju svojim susedom. V zadani je taktiez implementovany vlastny broadcast protokol, pre odosielanie udajov vsetkym nodom.
 
+Implementacia vlastneho broadcast protokolu
+- Pomocou OLSR routovacej tabulky si vyhladame susedov, ktory su klasifikovany vo vzdalenosti 1 hopu.
+- Kazdy datovy paket obsahuje informacie:
+  * cislo odosielajuceho nodu:cislo spravy:data
+  * cislo odosielatela: IDcko daneho nodku ktory vyslal danu spravu.
+  * cislo spravy: poradove cislo danej spravy pre dany node
+- Protokol:
+  * kazdy node si drzi posledne ID spravy, ktoru prijal od jedntlivych nodov
+  * ak prijmem spravu, ktorej ID je vacsie ako posledne zname ID, spracujem data a preposieam vsetkym mojim susedom
+  * ak je ID danej spravy mensie alebo rovnake ako aktualne, dana sprava je zahodena, pretoze prisla od ineho nodu, ktoremu som danu spravu poslal ja
+
+## Zadanie
+
+- Vizualizácia: NetAnim 2b (pozn. využite cmd-line-arguments)
+  - --anim=true
+- Reprezentácia merania: Tri grafy (pozn. minimálne 10 bodov merania s vyhodnotením, t.j. odchýlky merania) 3b + zhodnotenie grafu (prečo je to taká závislosť) 2b
+  - prvy
+  - druhy
+  - treti
+Popis merania:
+### vhodný vyber ISO OSI 4b
 _Smerovaci protokol_:
 
-OLSR:
+***OLSR***:
 - Nas pripad pouzitia vyzaduje vysoku mobilitu uzlov v sieti (kde je vhodnejsie pouzit OLSR protokol) a proaktivny pristup k vyhladavaniu trasy v sieti.
 - Vyhladanie cesty medzi uzlami pri pouziti AODV trva dlhsie, ako pri OLSR -> nas pripad pouzitia vyzaduje rychlu komunikaciu, s vzdy aktualnou informaciou o topologii siete 
 - OLSR -> okamzite najdenie cesty pomocou smerovacej tabulky, AODV-> inicializacia procesu objavenia trasy zahlcuje siet
@@ -25,29 +51,23 @@ OLSR:
 
 _Transformny protokol_:
 
-***UDP:
+***UDP***:
 - pointou nasho systemu je vymienanie informacii medzi vsetkymi uzlami v sieti  (broadcast), resp. medzi najblizsimi susedmi
 - z tohto dovodu je v nasom systeme vhodne (miestami az nutne) pouzit UDP, taktiez pozadujeme rychlost prenosu, bez nutnosti potvrdenia o prijati odoslanych paketov (nakolko odosielame viacerym uzlom)
 - Neaktualnu spravu je v nasom pripade mozne zahodit
 
-## TODO
+### volanie časových udalostí  2b
+- Simulator::Schedule(Seconds (30.0), &SendDataToNeighbours, node_cont.Get(6), "testovacia sprava");
+ - Odoslanie textu "testovacia sprava" vsetkym dostupnym nodom
+- Simulator::Schedule(Seconds (61.0), &SendDataToNeighbours, node_cont.Get(17), "testovacia sprava2");
+ - Odoslanie textu "testovacia sprava2" vsetkym dostupnym nodom
+- Simulator::Schedule(Seconds (80.0), &CallNeighbours, node_cont.Get(16));
+ - Nod s cislom 16 privolava vsetkych svojich susedov
+### volanie udalostí zmenu stavu (atributu modelu) 2b
+### zmena v modelu L1  fyzické médium, pohyb, útlm … 3b
+- Simulator::Schedule(Seconds (45.0), &CallNeighbours, node_cont.Get(11));
+ - Funkcia CallNeighbours privolava vsetkych susednych dronov. Toto privolanie je konstruovane tak, ze sa zisti uhol natocenia daneho dronu k jeho cielu, ten sa nastavi v MobilityModel-y a uda sa mu nejaka konstanta rychlost danym smerom. Vypocitame kedy je dany node potrebne zastavit a nasledne mu zmenime MobilityModel na nahodny pohyb v okoli.
 
-_Grafy:_
-- Troughput od vzdialenosti
-- Qos od vzdialenosti 
-- Troughput od data
-- Nejake callbacks v case
-
-- Pocet stratenych nodov od intervalu hello paketov
-_QOS:_
-- pomer prijatých paketov k odoslaným, 
-- časový interval medzi prijatím a odoslaním dátového paketu 
-- priepustnosť (troughput): množstvo dát úspešne poslaných od odosielateľa k príjemcovi (bits per second).
-
-_L2-L5 zmeny:_
-OLSR spravit
-- callback na routing table, zistovanie, ci poznam vsetky uzly 
-- Ked sa uzlik strati, nech ide do stredu mapy
-
-_Wifimanager preco?:_
-- dopisat
+### zmena v modelu L2-L5 2b
+- Simulator::Schedule (Seconds (sym_time/4), &Config::Set, "/NodeList/*/$ns3::olsr::RoutingProtocol/HelloInterval", TimeValue(Seconds(helloInterval)));
+  - Nastava zmena intervalu Hello Paketov
