@@ -6,7 +6,7 @@ Odovzdajte projekt t.j. c++ kod so vsetkymi kniznicami ak boli navyse (napr. *.h
 
 Parametre nutne k spusteniu simulacie z prikazoveho riadka s jednotlivymi nazvami: 
 
- - --simulTime -> cas trvania simulacie [double]
+- --simulTime -> cas trvania simulacie [double]
 - --anim ->vytvorenie animacie [boolean]
 - --helloInterval -> Interval hello paketov (OLSR)
 - --uavSpeed ->pociatocna rychlost pohybu uzlov
@@ -32,7 +32,6 @@ Implementacia vlastneho broadcast protokolu
   * kazdy node si drzi posledne ID spravy, ktoru prijal od jednotlivych uzlov
   * ak prijmem spravu, ktorej ID je vacsie ako posledne zname ID, spracujem data a preposieam vsetkym mojim susedom
   * ak je ID danej spravy mensie alebo rovnake ako aktualne, dana sprava je zahodena, pretoze prisla od ineho nodu, ktoremu som danu spravu poslal ja
-
 ## Body zadania
 
 #### Vizualizacia NetAnim (2b) + Reprezentacia merania (3b+2b)
@@ -41,13 +40,14 @@ Implementacia vlastneho broadcast protokolu
  - Reprezentácia merania: Tri grafy (pozn. minimálne 10 bodov merania s vyhodnotením, t.j. odchýlky merania) 3b + zhodnotenie grafu (prečo je to taká závislosť) 2b
 #### Graf c. 1: **LostNodesHello** [pocet/ms-1]
  - Popis: Zavislost poctu uzlov, ktore nemaju pocas simulacie ziadnych susedov od intervalu hello paketov. Sluzi ako nastavenie optimalnej hodnoty pre nas pripad.
- ![LostNodesHello](https://raw.githubusercontent.com/xchovanecv1/PS2/viki/Zadanie/odovzdavanie/LostNodesHello.svg?token=AICMFYEXOYSOHNLWY5T6LF2432J6C)
+ ![LostNodesHello](./LostNodesHello.svg)
+    
 #### Graf c. 2: **LostNodesPaketSize** [ms/m]
  - Popis: Zavislost poctu nodov, ktore nemaju pocas simulacie ziadnych susedov od velkosti paketov. Moze predstavovat optimalizaciu prenosovej velkosti udajov.
-  ![LostNodesPaketSize](https://raw.githubusercontent.com/xchovanecv1/PS2/viki/Zadanie/odovzdavanie/LostNodesPaketSize.svg?token=AICMFYFFHDXB4BHXTZYES2C432J7M)
+  ![LostNodesPaketSize](./LostNodesPaketSize.svg)
 #### Graf c. 3: **MeanDelayHelloInterval** [ms/B]
  - Popis: Zavislost priemerneho oneskorenia dat v sieti od intervalu hello paketov. Sluzi na nastavenie intervalu hello paketov, kde mozme optimalizovat pomer stratenych nodov (Graf c. 1) a priemerneho oneskorenia dat, ktore vznika castejsim posielanim hello paketov.
- ![MeanDelayHelloInterval](https://raw.githubusercontent.com/xchovanecv1/PS2/viki/Zadanie/odovzdavanie/MeanDelayHelloInterval.svg?token=AICMFYBEGNGRFPQUPGAG45C432KAE)
+ ![MeanDelayHelloInterval](./MeanDelayHelloInterval.svg)
    
 #### Vhodny vyber ISO OSI (4b)
 _Smerovaci protokol_:
