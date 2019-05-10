@@ -71,7 +71,7 @@ echo "$odchylka"
 THROUGHPUT_FILE=meandelay_hello
 
 echo Start
-vals=(1 2 10 20 40 60 80 100)
+vals=(1 2 5 10 15 20 40 60 80 100)
 
 for i in "${vals[@]}" #55 
 do

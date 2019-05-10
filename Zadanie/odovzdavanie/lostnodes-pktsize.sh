@@ -71,7 +71,7 @@ echo "$odchylka"
 THROUGHPUT_FILE=lostnodes_pktsize
 
 echo Start
-vals=(100 500 1000 1500 2000 3000 5000 6000)
+vals=(100 500 1000 1500 2000 3000 4000 5000 6000 8000)
 for i in "${vals[@]}" #55 
 do
 	echo $i

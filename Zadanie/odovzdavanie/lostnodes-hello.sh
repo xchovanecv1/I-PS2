@@ -74,7 +74,7 @@ UZITOCNE_FILE=uzitocneData
 
 
 echo Start
-vals=(1 2 5 10 20 40 60 80 100)
+vals=(1 2 5 8 10 15 20 40 60 80 100)
 for i in "${vals[@]}" #55 
 do
 	echo $i
