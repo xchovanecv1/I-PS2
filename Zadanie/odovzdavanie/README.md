@@ -39,13 +39,15 @@ Implementacia vlastneho broadcast protokolu
  - Vizualizácia: NetAnim 2b (pozn. využite cmd-line-arguments)
  - --anim=true
  - Reprezentácia merania: Tri grafy (pozn. minimálne 10 bodov merania s vyhodnotením, t.j. odchýlky merania) 3b + zhodnotenie grafu (prečo je to taká závislosť) 2b
- - Graf c. 1: **LostNodesHello** [pocet/ms-1]
+#### Graf c. 1: **LostNodesHello** [pocet/ms-1]
  - Popis: Zavislost poctu uzlov, ktore nemaju pocas simulacie ziadnych susedov od intervalu hello paketov. Sluzi ako nastavenie optimalnej hodnoty pre nas pripad.
- - Graf c. 2: **LostNodesPaketSize** [ms/m]
+ ![LostNodesHello](./LostNodesHello.svg)
+#### Graf c. 2: **LostNodesPaketSize** [ms/m]
  - Popis: Zavislost poctu nodov, ktore nemaju pocas simulacie ziadnych susedov od velkosti paketov. Moze predstavovat optimalizaciu prenosovej velkosti udajov.
- - Graf c. 3: **MeanDelayHelloInterval** [ms/B]
+  ![LostNodesPaketSize](./LostNodesPaketSize.svg)
+#### Graf c. 3: **MeanDelayHelloInterval** [ms/B]
  - Popis: Zavislost priemerneho oneskorenia dat v sieti od intervalu hello paketov. Sluzi na nastavenie intervalu hello paketov, kde mozme optimalizovat pomer stratenych nodov (Graf c. 1) a priemerneho oneskorenia dat, ktore vznika castejsim posielanim hello paketov.
-
+ ![MeanDelayHelloInterval](./MeanDelayHelloInterval.svg)
    
 #### Vhodny vyber ISO OSI (4b)
 _Smerovaci protokol_:
