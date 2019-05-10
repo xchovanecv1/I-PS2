@@ -35,9 +35,12 @@ Implementacia vlastneho broadcast protokolu
 - Vizualizácia: NetAnim 2b (pozn. využite cmd-line-arguments)
   - --anim=true
 - Reprezentácia merania: Tri grafy (pozn. minimálne 10 bodov merania s vyhodnotením, t.j. odchýlky merania) 3b + zhodnotenie grafu (prečo je to taká závislosť) 2b
-  - prvy
-  - druhy
-  - treti
+  - LostNodesHello
+	- Zavislost poctu nodov, ktore nemaju pocas simulacie ziadnych susedov od intervalu hello paketov. Sluzi ako nastavenie optimalnej hodnoty pre nas pripad.
+  - LostNodesPaketSize
+	- Zavislost poctu nodov, ktore nemaju pocas simulacie ziadnych susedov od velkosti paketov. Moze predstavovat optimalizaciu prenosovej velkosti udajov.
+  - MeanDelayHelloInterval
+	- Zavislost priemerneho oneskorenia dat v sieti od intervalu hello paketov.
 Popis merania:
 ### vhodný vyber ISO OSI 4b
 _Smerovaci protokol_:
