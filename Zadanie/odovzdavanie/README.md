@@ -4,45 +4,50 @@
 
 Odovzdajte projekt t.j. c++ kod so vsetkymi kniznicami ak boli navyse (napr. *.h alebo *.cc) popripade aj so spustacimi subormi bash, alebo gnuplot konfiguratorom ak ho projekt nevytvara.
 
-nutne parametre prikazovom riadku s jednotnymi nazvami: 
-- --simulTime cas trvania simulacie (double)
-- --anim vytvorenie animacie (boolean)
-- --helloInterval Interval hello paketov (OLSR)
-- --uavSpeed Base speed of node movement
-- --distance Distance between nodes
-- --pktSize Size of telemetry packet
- 
+Parametre nutne k spusteniu simulacie z prikazoveho riadka s jednotlivymi nazvami: 
 
-ak sa zmestia obrazky a animacia vlozte aj tu
+ - --simulTime -> cas trvania simulacie [double]
+- --anim ->vytvorenie animacie [boolean]
+- --helloInterval -> Interval hello paketov (OLSR)
+- --uavSpeed ->pociatocna rychlost pohybu uzlov
+- --distance -> vzdialenost medzi uzlami
+- --pktSize -> velkost paketov na vymienanie telemetriky
 
+Priklad spustenia simulacie z prikazoveho riadka:
+>./waf --run "zadanie --anim=true --helloInterval=2 --pktSize=600 --distance=400"
 
-## Dokumentacia zadania c. 3.
-Zadanie simuluje drony hliadkujuce loziska poziaru v Australskych lesoch. Jednotlive drony su rozmiestene do grid usporiadania. Vsetky drony maju spociatku nastaveny nahodny pohyb v okoli ich pociatku. V pripade, ako dron najde podozrivu oblast, privolava svojich najblizsich susedov z okolia k sebe. Taktiez si vymienaju telemetricke udaje vo forme zostavajucej baterie, ktorej hodnotu posielaju svojim susedom. V zadani je taktiez implementovany vlastny broadcast protokol, pre odosielanie udajov vsetkym nodom.
+## Dokumentacia zaverecneho zadania
+
+Zadanie simuluje drony hladajuce loziska poziaru v Australskych lesoch. Hliadkujuce drony su na zaciatku simulacie rozmiestene do grid usporiadania. Vsetky drony maju spociatku nastaveny nahodny pohyb v okoli ich pociatocnej polohy. V pripade, ako dron najde podozrivu oblast (oblast s moznym vyskytom poziaru), privolava svojich najblizsich susedov zo svojho okolia k sebe. Hliadkujuce drony si taktiez vymienaju telemetricke udaje vo forme zostavajucej baterie, ktorej hodnotu posielaju svojim susedom. V zadani je taktiez implementovany vlastny broadcast protokol, pre odosielanie udajov vsetkym uzlom.
 
 Implementacia vlastneho broadcast protokolu
 - Pomocou OLSR routovacej tabulky si vyhladame susedov, ktory su klasifikovany vo vzdalenosti 1 hopu.
-- Kazdy datovy paket obsahuje informacie:
-  * cislo odosielajuceho nodu:cislo spravy:data
-  * cislo odosielatela: IDcko daneho nodku ktory vyslal danu spravu.
-  * cislo spravy: poradove cislo danej spravy pre dany node
+- Format datoveho paketu:
+	* cislo_odosielajuceho_uzlu:cislo_spravy:data 
+- Obsah datoveho paketu:
+  * cislo_odosielajuceho_uzlu: ID daneho uzlu, ktory vyslal danu spravu
+  * cislo_spravy: poradove cislo danej spravy pre dany node
+  * data: uzitocne data - v pripade nami sledovanej telemetrie sa jedna o uroven baterie
 - Protokol:
-  * kazdy node si drzi posledne ID spravy, ktoru prijal od jedntlivych nodov
+  * kazdy node si drzi posledne ID spravy, ktoru prijal od jednotlivych uzlov
   * ak prijmem spravu, ktorej ID je vacsie ako posledne zname ID, spracujem data a preposieam vsetkym mojim susedom
   * ak je ID danej spravy mensie alebo rovnake ako aktualne, dana sprava je zahodena, pretoze prisla od ineho nodu, ktoremu som danu spravu poslal ja
 
-## Zadanie
+## Body zadania
 
-- Vizualizácia: NetAnim 2b (pozn. využite cmd-line-arguments)
-  - --anim=true
-- Reprezentácia merania: Tri grafy (pozn. minimálne 10 bodov merania s vyhodnotením, t.j. odchýlky merania) 3b + zhodnotenie grafu (prečo je to taká závislosť) 2b
-  - LostNodesHello
-	- Zavislost poctu nodov, ktore nemaju pocas simulacie ziadnych susedov od intervalu hello paketov. Sluzi ako nastavenie optimalnej hodnoty pre nas pripad.
-  - LostNodesPaketSize
-	- Zavislost poctu nodov, ktore nemaju pocas simulacie ziadnych susedov od velkosti paketov. Moze predstavovat optimalizaciu prenosovej velkosti udajov.
-  - MeanDelayHelloInterval
-	- Zavislost priemerneho oneskorenia dat v sieti od intervalu hello paketov.
-Popis merania:
-### vhodný vyber ISO OSI 4b
+#### Vizualizacia NetAnim (2b) + Reprezentacia merania (3b+2b)
+ - Vizualizácia: NetAnim 2b (pozn. využite cmd-line-arguments)
+ - --anim=true
+ - Reprezentácia merania: Tri grafy (pozn. minimálne 10 bodov merania s vyhodnotením, t.j. odchýlky merania) 3b + zhodnotenie grafu (prečo je to taká závislosť) 2b
+ - Graf c. 1: **LostNodesHello** [pocet/ms-1]
+ - Popis: Zavislost poctu uzlov, ktore nemaju pocas simulacie ziadnych susedov od intervalu hello paketov. Sluzi ako nastavenie optimalnej hodnoty pre nas pripad.
+ - Graf c. 2: **LostNodesPaketSize** [ms/m]
+ - Popis: Zavislost poctu nodov, ktore nemaju pocas simulacie ziadnych susedov od velkosti paketov. Moze predstavovat optimalizaciu prenosovej velkosti udajov.
+ - Graf c. 3: **MeanDelayHelloInterval** [ms/B]
+ - Popis: Zavislost priemerneho oneskorenia dat v sieti od intervalu hello paketov. **Sluzi na**
+
+   
+#### Vhodny vyber ISO OSI (4b)
 _Smerovaci protokol_:
 
 ***OLSR***:
@@ -59,18 +64,19 @@ _Transformny protokol_:
 - z tohto dovodu je v nasom systeme vhodne (miestami az nutne) pouzit UDP, taktiez pozadujeme rychlost prenosu, bez nutnosti potvrdenia o prijati odoslanych paketov (nakolko odosielame viacerym uzlom)
 - Neaktualnu spravu je v nasom pripade mozne zahodit
 
-### volanie časových udalostí  2b
-- Simulator::Schedule(Seconds (30.0), &SendDataToNeighbours, node_cont.Get(6), "testovacia sprava");
- - Odoslanie textu "testovacia sprava" vsetkym dostupnym nodom
-- Simulator::Schedule(Seconds (61.0), &SendDataToNeighbours, node_cont.Get(17), "testovacia sprava2");
- - Odoslanie textu "testovacia sprava2" vsetkym dostupnym nodom
-- Simulator::Schedule(Seconds (80.0), &CallNeighbours, node_cont.Get(16));
- - Nod s cislom 16 privolava vsetkych svojich susedov
-### volanie udalostí zmenu stavu (atributu modelu) 2b
-### zmena v modelu L1  fyzické médium, pohyb, útlm … 3b
-- Simulator::Schedule(Seconds (45.0), &CallNeighbours, node_cont.Get(11));
- - Funkcia CallNeighbours privolava vsetkych susednych dronov. Toto privolanie je konstruovane tak, ze sa zisti uhol natocenia daneho dronu k jeho cielu, ten sa nastavi v MobilityModel-y a uda sa mu nejaka konstanta rychlost danym smerom. Vypocitame kedy je dany node potrebne zastavit a nasledne mu zmenime MobilityModel na nahodny pohyb v okoli.
+#### Volanie casovych udalosti  (2b)
 
-### zmena v modelu L2-L5 2b
+- Simulator::Schedule(Seconds (30.0), &SendDataToNeighbours, node_cont.Get(6), "testovacia sprava");
+ - Odoslanie textu "testovacia sprava" vsetkym dostupnym uzlom
+- Simulator::Schedule(Seconds (61.0), &SendDataToNeighbours, node_cont.Get(17), "testovacia sprava2");
+ - Odoslanie textu "testovacia sprava2" vsetkym dostupnym uzlom
+- Simulator::Schedule(Seconds (80.0), &CallNeighbours, node_cont.Get(16));
+ - Uzol s cislom 16 privolava vsetkych svojich susedov
+ 
+#### Zmena v  L1  fyzicke medium, pohyb, utlm … (3b) + Volanie udalosti zmeny stavu (atributu modelu) (2b)
+- Simulator::Schedule(Seconds (45.0), &CallNeighbours, node_cont.Get(11));
+ - Funkcia CallNeighbours privolava vsetkych susednych dronov. Toto privolanie je konstruovane tak, ze sa zisti uhol natocenia daneho dronu k jeho cielu, ten sa nastavi v MobilityModel-y a uda sa mu nejaka konstantna rychlost vypocitanym smerom. Vypocitame kedy je dany node potrebne zastavit a nasledne mu zmenime MobilityModel na nahodny pohyb v okoli.
+
+#### Zmena v  L2-L5 (2b)
 - Simulator::Schedule (Seconds (sym_time/4), &Config::Set, "/NodeList/*/$ns3::olsr::RoutingProtocol/HelloInterval", TimeValue(Seconds(helloInterval)));
   - Nastava zmena intervalu Hello Paketov
