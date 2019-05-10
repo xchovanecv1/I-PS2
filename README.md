@@ -12,7 +12,7 @@ nutne parametre prikazovom riadku s jednotnymi nazvami:
 ak sa zmestia obrazky a animacia vlozte aj tu
 
 
-## Dokumentacia zadania
+## Dokumentacia zadania c. 3.
 Zadanie simuluje drony hliadkujuce loziska poziaru v Australskych lesoch. Jednotlive drony su rozmiestene do grid usporiadania. Vsetky drony maju spociatku nastaveny nahodny pohyb v okoli ich pociatku. V pripade, ako dron najde podozrivu oblast, privolava svojich najblizsich susedov z okolia k sebe. Taktiez si vymienaju telemetricke udaje vo forme zostavajucej baterie, ktorej hodnotu posielaju svojim susedom. V zadani je taktiez implementovany vlastny broadcast protokol, pre odosielanie udajov vsetkym nodom.
 
 Implementacia vlastneho broadcast protokolu
@@ -53,6 +53,17 @@ _Transformny protokol_:
 - Neaktualnu spravu je v nasom pripade mozne zahodit
 
 ### volanie časových udalostí  2b
+- Simulator::Schedule(Seconds (30.0), &SendDataToNeighbours, node_cont.Get(6), "testovacia sprava");
+ - Odoslanie textu "testovacia sprava" vsetkym dostupnym nodom
+- Simulator::Schedule(Seconds (61.0), &SendDataToNeighbours, node_cont.Get(17), "testovacia sprava2");
+ - Odoslanie textu "testovacia sprava2" vsetkym dostupnym nodom
+- Simulator::Schedule(Seconds (80.0), &CallNeighbours, node_cont.Get(16));
+ - Nod s cislom 16 privolava vsetkych svojich susedov
 ### volanie udalostí zmenu stavu (atributu modelu) 2b
 ### zmena v modelu L1  fyzické médium, pohyb, útlm … 3b
+- Simulator::Schedule(Seconds (45.0), &CallNeighbours, node_cont.Get(11));
+ - Funkcia CallNeighbours privolava vsetkych susednych dronov. Toto privolanie je konstruovane tak, ze sa zisti uhol natocenia daneho dronu k jeho cielu, ten sa nastavi v MobilityModel-y a uda sa mu nejaka konstanta rychlost danym smerom. Vypocitame kedy je dany node potrebne zastavit a nasledne mu zmenime MobilityModel na nahodny pohyb v okoli.
+
 ### zmena v modelu L2-L5 2b
+- Simulator::Schedule (Seconds (sym_time/4), &Config::Set, "/NodeList/*/$ns3::olsr::RoutingProtocol/HelloInterval", TimeValue(Seconds(helloInterval)));
+  - Nastava zmena intervalu Hello Paketov
