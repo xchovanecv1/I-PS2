@@ -44,7 +44,7 @@ Implementacia vlastneho broadcast protokolu
  - Graf c. 2: **LostNodesPaketSize** [ms/m]
  - Popis: Zavislost poctu nodov, ktore nemaju pocas simulacie ziadnych susedov od velkosti paketov. Moze predstavovat optimalizaciu prenosovej velkosti udajov.
  - Graf c. 3: **MeanDelayHelloInterval** [ms/B]
- - Popis: Zavislost priemerneho oneskorenia dat v sieti od intervalu hello paketov. **Sluzi na**
+ - Popis: Zavislost priemerneho oneskorenia dat v sieti od intervalu hello paketov. Sluzi na nastavenie intervalu hello paketov, kde mozme optimalizovat pomer stratenych nodov (Graf c. 1) a priemerneho oneskorenia dat, ktore vznika castejsim posielanim hello paketov.
 
    
 #### Vhodny vyber ISO OSI (4b)
